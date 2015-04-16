@@ -4,3 +4,5 @@ https://msdn.microsoft.com/en-us/library/windows/desktop/ms681385%28v=vs.85%29.a
 
 >> http://blogs.msdn.com/b/toub/archive/2006/05/03/589423.aspx
 https://msdn.microsoft.com/en-us/library/system.windows.forms.keys%28v=vs.110%29.aspx
+
+>> http://webcache.googleusercontent.com/search?q=cache:0t1NWJcTPWMJ:sleepycoders.blogspot.com/2011/04/c-console-application-in-system-tray.html+&cd=4&hl=pl&ct=clnk&gl=pl

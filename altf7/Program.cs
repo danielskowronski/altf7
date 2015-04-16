@@ -7,6 +7,10 @@ using System.Diagnostics;
 using System.Windows.Forms;//for Keys enum
 using System.Runtime.InteropServices;
 
+using System.Reflection;
+using System.IO;
+using System.Drawing;
+
 namespace altf7
 {
     class Program
@@ -38,6 +42,16 @@ namespace altf7
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        
+        private static Int32 showWindow = 0; //0 - SW_HIDE - Hides the window and activates another window.
+
+        [DllImport("kernel32.dll", ExactSpelling = true)]
+        private static extern IntPtr GetConsoleWindow();
+
+        private static IntPtr ThisConsole = GetConsoleWindow();
 
         private static IntPtr SetHook(LowLevelKeyboardProc proc)
         {
@@ -98,9 +112,9 @@ namespace altf7
             if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN) || (wParam == (IntPtr)WM_SYSKEYDOWN))
             {
                 int vkCode = Marshal.ReadInt32(lParam);
-                Console.WriteLine((Keys)vkCode + "\t" + vkCode.ToString());
-                if (vkCode == 164) lastWasAlt = true;
-                else if (vkCode == 118 && lastWasAlt) moveForegroundWindowUntilClick();
+                //Console.WriteLine((Keys)vkCode + "\t" + vkCode.ToString());
+                if (vkCode == 164) { lastWasAlt = true; Console.WriteLine((Keys)vkCode + "\t" + vkCode.ToString()); }
+                else if (vkCode == 118 && lastWasAlt) { moveForegroundWindowUntilClick(); Console.WriteLine((Keys)vkCode + "\t" + vkCode.ToString()); }
                 else lastWasAlt = false;
             }
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
@@ -132,6 +146,45 @@ namespace altf7
             }
         }
         #endregion manual testing functions
+
+        #region tray
+        private static NotifyIcon TrayIcon;
+        private static void TrayIcon_Click(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Right)
+            {//reserve right click for context menu
+                showWindow = ++showWindow % 2;
+                ShowWindow(ThisConsole, showWindow);
+            }
+        }
+        private static void smoothExit(object sender, EventArgs e)
+        {
+            TrayIcon.Visible = false;
+            Application.Exit();
+            Environment.Exit(1);
+        }
+        private static void initTray()
+        {
+            Console.Title = "Alt+F7 daemon - to hide/restore click icon on tray. To close - [X] or right click in tray.";
+
+            TrayIcon = new NotifyIcon();
+            Assembly currentAssembly = Assembly.GetExecutingAssembly();
+            Stream IconResourceStream = currentAssembly.GetManifestResourceStream("altf7.icon.ico");
+            TrayIcon.Icon = new Icon(IconResourceStream);
+            TrayIcon.Visible = true;
+
+            ShowWindow(ThisConsole, showWindow);
+            TrayIcon.MouseClick += new MouseEventHandler(TrayIcon_Click);
+
+            TrayIcon.ContextMenuStrip = new ContextMenuStrip();
+            TrayIcon.ContextMenuStrip.Items.AddRange(new ToolStripItem[] { new ToolStripMenuItem() });
+            TrayIcon.ContextMenuStrip.Items[0].Text = "Exit";
+            TrayIcon.ContextMenuStrip.Items[0].Click += new EventHandler(smoothExit);
+        }
+        
+
+        #endregion tray
+
         static void moveForegroundWindowUntilClick()
         {
             while (true)
@@ -146,6 +199,7 @@ namespace altf7
 
         static void Main(string[] args)
         {
+            initTray();
             _hookID = SetHook(_proc);
             Application.Run();
             UnhookWindowsHookEx(_hookID);
